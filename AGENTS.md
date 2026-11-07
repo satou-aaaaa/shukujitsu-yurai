@@ -37,6 +37,7 @@ QA_SHIFT_DAYS=24 node qa/run.mjs   # 日付・カレンダーを変えたとき�
 - 押せる所は高さ44px以上（QA が見る）。一行の式の途中にコメント `//` を足さない。少し遅れて動く処理（setTimeout）は、画面が替わっていたら何もしない。機能を足す・直すたびに `qa/run.mjs` に検査を足す。乱数で組む部分は何年分も作って確かめる（shared-workflows `incidents/2026-10-31-roppo-empty-village.md`）。
 - PWA（`manifest.webmanifest`・`sw.js`・`icon-*.png`）：画面のファイルを足したら `sw.js` の `SHELL` にも足し、中身を大きく変えたら `CACHE` の版を上げる。アイコンは `node tools/make-icons.cjs`（maskable は中を縮めた `icon-maskable-512.png`）、SNS 用の絵 `og.png` は `node tools/make-og.cjs`（今日の問題を入れない）。
 - 公開リポジトリなので、個人情報・鍵を入れない。
+- その年の日付（`k`、ふつう、2026-11-07 追加）：第○月曜日の祝日4つ×2027〜2036年（`YEARS`）を「何日？」で出す。M月1日の曜日はグレゴリオ暦で計算し、QA が1日ずつ数え直す。特別の法律で祝日が動いた年（2020・2021年）は入れない。年を足すときは `YEARS` の最後に足す（id が年の順の番号なので、途中に入れると記録がずれる）。
 
 ## 公開
 

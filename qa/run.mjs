@@ -69,6 +69,13 @@ const idOf = (t) => t.split("|")[0].split(":")[1];
   }
   check(`問題（${G.QS.length}）：選び肢は4つ・答えはちょうど1つ・答えにもなる祝日・月はまちがいに入れない・入力の問題は意味を出す`, bad.length === 0, bad.slice(0, 5).join(" / "));
   check("答えの場所は1〜4番に散らばる（どこも15%以上）", pos.every((n) => n / pos.reduce((a, b) => a + b, 0) > 0.15), String(pos));
+  { const ids = G.POOL[1].filter((x) => G.QBY[x].kd === "k"), bad = [];
+    for (const id of ids) { const { y, h } = G.YQ(G.QBY[id].key); let n = 0, d = 0;
+      // 別の数え方：1日から1日ずつ見て、h.d 番目の月曜日
+      for (let i = 1; i <= 31 && !d; i++) { const t = new Date(Date.UTC(y, h.m - 1, i)); if (t.getUTCMonth() === h.m - 1 && t.getUTCDay() === 1 && ++n === h.d) d = i; }
+      const P = G.make(`1:${id}|x2026-11-07`); if (P.opts[P.ans] !== `D:${h.m}/${d}` || new Set(P.opts).size !== 4 || !G.facts(P).join("").includes(`${h.m}月${d}日`)) bad.push(id); }
+    check("その年の第○月曜日：4つ×2027〜2036年の40問・日付を1日ずつ数え直して合う・説明に日付", ids.length === 40 && bad.length === 0, bad.join());
+    check("その年の問題に、特別の法律で動いた2020・2021年を入れない", G.YEARS.every((y) => y !== 2020 && y !== 2021)); }
   check("問題の数：300問より多い・どの難しさも60問以上", G.QS.length >= 300 && G.POOL.every((x) => x.length >= 60), G.POOL.map((x) => x.length).join());
   const long = [];
   for (const q of G.QS) for (const f of [...G.facts(G.make(`${q.lv}:${q.id}|q2027-01-01`)), G.make(`${q.lv}:${q.id}|q2027-01-01`).sub]) if ([...f].length > 60) long.push(q.id + ":" + f);
