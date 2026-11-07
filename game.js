@@ -65,6 +65,9 @@
   // 振替休日：日曜日の祝日 d（M月D日）の後で、いちばん近い祝日でない日
   const isHol = (m, d) => HOL.some((k) => (k.t === "f" || k.t === "s") && k.m === m && k.d === d);
   const furikae = (k) => { let d = k.d + 1; while (isHol(k.m, d)) d++; return d; };
+  // k：その年の M月1日の曜日（グレゴリオ暦）。2020・2021年のような特別の法律で動いた年は入れない
+  const YEARS = [2027, 2028, 2029, 2030, 2031, 2032, 2033, 2034, 2035, 2036];
+  const YQ = (key) => { const y = YEARS[Math.floor(key / 4)], h = MON[key % 4], w = new Date(Date.UTC(y, h.m - 1, 1)).getUTCDay(); return { y, h, w, a: nthMon(w, h.d) }; };
   const CAL = []; // c・C：[祝日, M月1日の曜日]
   for (const k of MON) for (let w = 0; w < 7; w++) CAL.push([k, w]);
   const SAND = ["敬老の日が9月21日、秋分の日が9月23日の年。9月22日は？", "祝日と祝日のあいだに、平日が1日だけある。その日は？"];
@@ -74,7 +77,7 @@
   // やさしい：a＝名前 → 意味／A＝意味 → 名前／d＝名前 → 月／D＝日付 → 名前／q＝月 → その月の祝日／x＝月曜日に決まっている祝日は？
   // ふつう：r＝名前 → 日付の決め方／t＝名前 → 決め方の種類／w＝意味の穴うめ／o＝昔のこと → 名前／n＝次に来る祝日／N＝前の祝日／z＝祝日の無い月／m＝その月の祝日の数／g＝同じ月の祝日
   // むずかしい：y＝意味 → 名前を入力／c＝M月1日の曜日 → 第N月曜日の日付／C＝日付 → M月1日の曜日／f＝振替休日の日付／h＝はさまれた日／b＝2つの祝日のあいだ／O＝名前 → 昔のこと
-  const KIND = { a: 0, A: 0, d: 0, D: 0, q: 0, x: 0, r: 1, t: 1, w: 1, o: 1, n: 1, N: 1, z: 1, m: 1, g: 1, y: 2, c: 2, C: 2, f: 2, h: 2, b: 2, O: 2 };
+  const KIND = { k: 1, a: 0, A: 0, d: 0, D: 0, q: 0, x: 0, r: 1, t: 1, w: 1, o: 1, n: 1, N: 1, z: 1, m: 1, g: 1, y: 2, c: 2, C: 2, f: 2, h: 2, b: 2, O: 2 };
   const QS = [], QBY = {}, POOL = [[], [], []];
   const addQ = (kd, key, no) => { const id = kd + key, q = { id, lv: KIND[kd], kd, no, key }; QS.push(q); QBY[id] = q; POOL[q.lv].push(id); };
   for (const kd of ["a", "A", "d", "D", "q", "r", "t", "w", "n", "N", "y"]) for (const k of HOL) addQ(kd, k.no, k.no);
@@ -87,6 +90,8 @@
   FIX.forEach((k) => addQ("f", k.no, 16));
   SAND.forEach((_, i) => addQ("h", i, 17));
   for (let i = 1; i < ORD.length - 1; i++) addQ("b", ORD[i].no, ORD[i].no);
+  // 2026-11-07 足した形（最後に足すだけ。id は記録に残る）：ふつう k＝その年の第○月曜日の祝日は何日？（4つ×2027〜2036年）
+  YEARS.forEach((y) => MON.forEach((k) => addQ("k", (y - 2027) * 4 + MON.indexOf(k), k.no)));
   const DIM = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
   const md = (m, d) => `${m}月${d}日`;
 
@@ -132,6 +137,7 @@
       case "m": ans = "c:" + cntOf(q.key); pick = [0, 1, 2, 3].filter((n) => n !== cntOf(q.key)).map((n) => "c:" + n); break;
       case "g": { const a = HOL.find((x) => x !== k && x.m === k.m); ans = H(a); pick = other((x) => x.m !== k.m).sort((p, r) => Math.abs(p.m - k.m) - Math.abs(r.m - k.m)).slice(0, 3).map(H); break; }
       case "c": { const [h, w] = CAL[q.key], a = nthMon(w, h.d); ans = `D:${h.m}/${a}`; pick = shuffled([a - 7, a + 7, a - 1, a + 1, a + 6].filter((x) => x >= 1 && x <= 28), R).slice(0, 3).map((x) => `D:${h.m}/${x}`); break; }
+      case "k": { const { h, a } = YQ(q.key); ans = `D:${h.m}/${a}`; pick = shuffled([a - 7, a + 7, a - 1, a + 1, a + 14].filter((x) => x >= 1 && x <= 31), R).slice(0, 3).map((x) => `D:${h.m}/${x}`); break; }
       case "C": { const [, w] = CAL[q.key]; ans = "W:" + w; pick = shuffled([0, 1, 2, 3, 4, 5, 6].filter((x) => x !== w), R).slice(0, 3).map((x) => "W:" + x); break; }
       case "f": { const h = BY[q.key], a = furikae(h); ans = `D:${h.m}/${a}`; pick = shuffled([...new Set([h.d - 1, h.d + 1, h.d + 2, h.d + 3, h.d + 4, h.d + 7, h.d - 7, h.d - 2])].filter((x) => x !== a && x >= 1 && x <= DIM[h.m] && (a === h.d + 1 || x !== h.d - 1)), R).slice(0, 3).map((x) => `D:${h.m}/${x}`); break; }
       case "h": ans = "z:0"; pick = ["z:1", "z:2", "z:3"]; break;
@@ -148,6 +154,7 @@
       case "g": return H(HOL.find((x) => x !== k && x.m === k.m));
       case "c": { const [h, w] = CAL[q.key]; return `D:${h.m}/${nthMon(w, h.d)}`; }
       case "C": return "W:" + CAL[q.key][1];
+      case "k": { const { h, a } = YQ(q.key); return `D:${h.m}/${a}`; }
       case "f": { const h = BY[q.key]; return `D:${h.m}/${furikae(h)}`; }
       case "h": return "z:0"; case "y": return "";
       default: return H(k);
@@ -175,6 +182,7 @@
       case "g": return big(k.nm, "と同じ月の祝日は？");
       case "y": return big(k.mean, "という意味の祝日は？（名前を入力）", " long");
       case "c": { const [h, w] = CAL[q.key]; return big(`${h.m}月1日が${WD[w]}曜日`, `の年。${h.nm}（${h.rule}）は？`); }
+      case "k": { const { y, h } = YQ(q.key); return big(`${y}年の${h.nm}`, `は何日？（${h.rule}）`); }
       case "C": { const [h, w] = CAL[q.key]; return big(`${h.nm}が${md(h.m, nthMon(w, h.d))}`, `の年。${h.m}月1日は何曜日？`); }
       case "f": { const h = BY[q.key]; return big(`${h.nm}（${md(h.m, h.d)}）が日曜日`, "その年、振替休日になる日は？"); }
       case "h": return big(SAND[q.key], "祝日法では？", " long");
@@ -205,6 +213,12 @@
       out.push(`第${h.d}月曜日は、そこから${h.d - 1}週あとの${md(h.m, nthMon(w, h.d))}。`);
       return out;
     }
+    if (P.kd === "k") {
+      const { y, h, w, a } = YQ(P.key);
+      out.push(`${y}年の${h.m}月1日は${WD[w]}曜日。はじめの月曜日は${md(h.m, nthMon(w, 1))}。`);
+      out.push(`${h.nm}は第${h.d}月曜日なので${md(h.m, a)}。土日と合わせて3連休（ハッピーマンデー）。`);
+      return out;
+    }
     if (P.kd === "f") {
       const h = BY[P.key], a = furikae(h);
       out.push("祝日が日曜日なら、その後のいちばん近い祝日でない日が休み。");
@@ -227,7 +241,7 @@
   }
 
   // 答えの見出し：名前と、その下の小さな字
-  const titleOf = (P) => { const k = P.p; if (k.g === 4) return { nm: k.nm, sm: k.mean }; return { nm: `${k.nm}（${k.rule}）`, sm: k.mean }; };
+  const titleOf = (P) => { const k = P.p; if (P.kd === "k") { const { y, h, a } = YQ(P.key); return { nm: `${y}年の${h.nm}は${md(h.m, a)}`, sm: k.mean }; } if (k.g === 4) return { nm: k.nm, sm: k.mean }; return { nm: `${k.nm}（${k.rule}）`, sm: k.mean }; };
   // まちがえた選び肢の説明（その選び肢が何だったか）
   function wrongNote(o) {
     const t = o[0], v = o.slice(2);
@@ -276,7 +290,7 @@
   const dailyTags = (k) => dayPick(dayIdx(k)).map(([lv, id]) => `${lv}:${id}|d${k}`);
   const hardTags = (k) => hardPick(dayIdx(k)).map(([lv, id]) => `${lv}:${id}|h${k}`);
 
-  const API = { titleOf, wrongNote, LV, AREAS, ITEMS, BY, IDS, HOL, ORD, QS, QBY, POOL, KIND, CAL, WD, TYPE, nthMon, furikae, optsOf, optHtml, optLabel, ansKey, symHtml, symLabel, ask, make, norm, okInput, inputHint, facts, seedOf, rng, shuffled, dailyTags, hardTags, dayIdx, EPOCH, dayMs, keyOf, evOf };
+  const API = { YEARS, YQ, titleOf, wrongNote, LV, AREAS, ITEMS, BY, IDS, HOL, ORD, QS, QBY, POOL, KIND, CAL, WD, TYPE, nthMon, furikae, optsOf, optHtml, optLabel, ansKey, symHtml, symLabel, ask, make, norm, okInput, inputHint, facts, seedOf, rng, shuffled, dailyTags, hardTags, dayIdx, EPOCH, dayMs, keyOf, evOf };
   if (typeof module === "object" && module.exports) module.exports = API;
   root.SHUKU = API;
 })(typeof window !== "undefined" ? window : globalThis);
