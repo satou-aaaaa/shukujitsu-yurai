@@ -18,7 +18,7 @@ const check = (name, ok, detail = "") => results.push({ name, ok: !!ok, detail: 
 const req = createRequire(import.meta.url);
 const G = req(path.join(root, "game.js"));
 const idOf = (t) => t.split("|")[0].split(":")[1];
-{ let ng = false; try { G.make("0:y40|x2026-11-07"); } catch (e) { ng = true; } check("難しさと問題の合わないタグは作らない", ng); }
+{ let ng = false; const yid = G.POOL[2].find((x) => G.QBY[x].kd === "y"); try { G.make(`0:${yid}|x2026-11-07`); } catch (e) { ng = true; } check("難しさと問題の合わないタグは作らない（実在する問題で）", !!yid && ng); }
 
 // ---- 1. 祝日のデータと問題（ブラウザを使わない）----
 {
@@ -348,7 +348,7 @@ try {
   const el = await p.evaluate(() => __op.load().runs.e.list);
   check("とことんは、やさしい5→ふつう10→むずかしい全部（1つの並びで同じ問題は出ない）", el.length === 15 + G.POOL[2].length && el.slice(0, 5).every((t) => t[0] === "0") && el.slice(5, 15).every((t) => t[0] === "1") && new Set(el.map(idOf)).size === el.length);
   {
-    const rep = await p.evaluate(() => { let bad = 0; for (let n = 0; n < 300; n++) { const l = __op.endlessList(__op.load(), n % 2 ? "y40" : null, n % 3 === 0); const id = (t) => t.split("|")[0].split(":")[1]; const ev = (q) => __op.G.evOf(q)[0]; if (n % 2 && ev(id(l[0])) === 40) bad++; for (let i = 1; i < l.length; i++) { if (ev(id(l[i - 1])) === ev(id(l[i]))) bad++; } } return bad; });
+    const rep = await p.evaluate(() => { let bad = 0; const prev = __op.G.POOL[2][0]; const ev = (q) => __op.G.evOf(q)[0]; for (let n = 0; n < 300; n++) { const l = __op.endlessList(__op.load(), n % 2 ? prev : null, n % 3 === 0); const id = (t) => t.split("|")[0].split(":")[1]; if (n % 2 && ev(id(l[0])) === ev(prev)) bad++; for (let i = 1; i < l.length; i++) { if (ev(id(l[i - 1])) === ev(id(l[i]))) bad++; } } return bad; });
     check("とことんは続けて同じ祝日を出さない・前の回の最後の祝日から始めない（300回）", rep === 0, String(rep));
   }
   await solve(p); await p.click("#next");
